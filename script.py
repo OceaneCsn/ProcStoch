@@ -31,8 +31,8 @@ def lam_estimate(poisson):
 
 ############################# Neuron pikes ##########################
 
-#pathToFiles = "D:/ProcStoch"
-pathToFiles = "/home/ocassan/ProcStoch/"
+pathToFiles = "D:/ProcStoch"
+#pathToFiles = "/home/ocassan/ProcStoch/"
 sham4_art = pd.read_csv(os.path.join(pathToFiles, 'SHAM4_artefact_timing.txt'), header = None, sep = '\t')
 sham5_art = pd.read_csv(os.path.join(pathToFiles, 'SHAM5_artefact_timing.txt'), header = None, sep = '\t')
 sham4_spikes = pd.read_csv(os.path.join(pathToFiles, 'SHAM4_spike_timing.txt'), header = None, sep = '\t')
@@ -102,8 +102,9 @@ plt.ylabel("$\lambda(t)$",fontsize=20)
 
 
 #regression model 
-from sklearn.ensemble import RadomForestRegressor
-rf=RandomForestRegressor(n_estimators=50, criterion='mse', max_depth=5)
+#from sklearn.ensemble import RadomForestRegressor
+import sklearn as slk
+rf=slk.ensemble.RandomForestRegressor(n_estimators=50, criterion='mse', max_depth=5)
 
 ################ Simultaing a non homogenous Poisson Process
 #my idea : for a given number of T experiments for 1000 replicates, pick a value in a poisson law
@@ -127,10 +128,20 @@ for i,d in enumerate(poiss):
     plt.plot(d, np.repeat(i,len(d)), 'o')
 
 
-##premiere methode
-values = [0]    
-for t in range(0:100):
-    values.append(0)
+##CORRECTION : premiere methode
+    
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
+
+values = [1]    
+for t in range(1,1000):
+    nearest = find_nearest(Lambda_t['lambda'], values[t-1])
+    values.append((values[t-1]+np.random.exponential(scale = 1/nearest, size=1))%100)
+histogram_results = plt.hist(values, bins = 100)
+values
+
     
 #deuxieme methode : separation. Pour chaque evenement, on le mets dans un des 2 processus de poisson (on garde le spike ou pas)
 #suivant une loi de Bernouilli. On tire dans une loi uniforme entre 0 et 0.1. On le garde suivant une proba qui dépend de la valeur piochée
