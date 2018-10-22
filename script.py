@@ -31,8 +31,8 @@ def lam_estimate(poisson):
 
 ############################# Neuron pikes ##########################
 
-pathToFiles = "D:/ProcStoch"
-#pathToFiles = "/home/ocassan/ProcStoch/"
+#pathToFiles = "D:/ProcStoch"
+pathToFiles = "/home/ocassan/ProcStoch/"
 sham4_art = pd.read_csv(os.path.join(pathToFiles, 'SHAM4_artefact_timing.txt'), header = None, sep = '\t')
 sham5_art = pd.read_csv(os.path.join(pathToFiles, 'SHAM5_artefact_timing.txt'), header = None, sep = '\t')
 sham4_spikes = pd.read_csv(os.path.join(pathToFiles, 'SHAM4_spike_timing.txt'), header = None, sep = '\t')
@@ -103,7 +103,7 @@ plt.ylabel("$\lambda(t)$",fontsize=20)
 
 #regression model 
 #from sklearn.ensemble import RadomForestRegressor
-import sklearn as slk
+from sklearn import ensemble
 rf=slk.ensemble.RandomForestRegressor(n_estimators=50, criterion='mse', max_depth=5)
 
 ################ Simultaing a non homogenous Poisson Process

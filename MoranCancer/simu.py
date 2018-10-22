@@ -8,16 +8,8 @@ Created on Sun Oct 14 22:04:55 2018
 import random as rd
 import matplotlib.pyplot as plt
 import numpy as np
-
-class Cell():
-    def __init__(self, cancerous=False, f=1.2, mu=0.5):
-        self.cancerous = cancerous
-        if not cancerous:
-            self.fitness = 1
-            self.mu = 0.001
-        else:
-            self.fitness = f
-            self.mu = mu
+import random as rd
+import math
 
 def get_cmap(n, name='hsv'):
     '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
@@ -25,7 +17,7 @@ def get_cmap(n, name='hsv'):
     return plt.cm.get_cmap(name, n)
             
 class simu():
-    def __init__(self, N, w, c0, f=1.2, mu=0.2):
+    def __init__(self, N, w, c0, alpha = 0.01, f=1.2, mu=0.2, treat = None):
         self.cells = []
         self.nbCanc = c0
         self.f = f
@@ -42,34 +34,53 @@ class simu():
         self.fitnesses[1] = f
         self.fitnesses[0] = 1
         self.history = [self.pop]
-
+        self.treat = treat
+        self.alpha = alpha
+        self.treatment = False
+        self.cpt_treat = 0
+        self.treat_times = []
+        self.shannon = []
         
-    def step(self):
+    def step(self, t):
         
         self.cancerous_types_counts = [self.pop[k] for k in list(self.pop.keys()) if k!=0]
         self.nbCanc = sum(self.cancerous_types_counts)
         self.cancerous_types = [k for k in list(self.pop.keys()) if k!=0]
         
+        #print(self.fitnesses)
+        if self.cancer_detection()[0] and not self.treatment:
+            self.fitnesses[self.cancer_detection()[1]] *= self.alpha
+            #print("******************** treatment ! ************************************")
+            if not self.treatment:
+                self.treat_times.append(t)
+            self.treatment = True
+            
+        if self.treatment:
+            self.cpt_treat +=1
+            
+        if self.cpt_treat == 50:
+            self.cpt_treat = 0
+            self.treatment = False
+            self.fitnesses[self.cancer_detection()[1]] /= self.alpha
+            
         breaks = []
         r = rd.random()
-        for cell_type in list(self.pop.keys()):
+        for cell_type in sorted(list(self.pop.keys())):
             breaks.append(self.fitnesses[cell_type]*self.pop[cell_type])
         nbTot = sum(breaks)
         breaks = np.cumsum(breaks)/nbTot
         chosen = 0
-        print(breaks)
+        #print(breaks)
         for i, b in enumerate(breaks):
             if r<b:
                 chosen = i
                 break                
-        #nbTot = self.f*self.nbCanc + (self.N-self.nbCanc)        
-        #pCanc = self.f*self.nbCanc/nbTot*1.0
-        
+
+        #print("chosen", chosen)
         if chosen > 0:
             #a cancerous cell was chosen
             if rd.random() <= self.mu:
                 #a new cancerous clone is born
-                print("cancerous cell mutation!")
                 new_type = max(self.cancerous_types)+1
                 self.cancerous_types.append(new_type)
                 self.pop[new_type] = 1
@@ -80,7 +91,6 @@ class simu():
         else:
             #a normal cell was chosen
             if rd.random() <= self.mu_norm:
-                print("normal cell mutation!")
                 #a new cancerous clone is born
                 new_type = max(self.cancerous_types)+1
                 self.cancerous_types.append(new_type)
@@ -97,22 +107,36 @@ class simu():
             tmp += self.pop[typ]
             if tmp >= indiv:
                 killed = typ
-                print("killing ", killed)
                 break
         self.pop[killed] -= 1
-        print(self.pop)
+        #print(self.pop)
         self.history.append(dict(self.pop))
+        self.set_shannon()
         
     def cancer_detection(self):
-        self.cancerous_types = [self.pop[k] for k in list(self.pop.keys()) if k!=0]
-        self.nbCanc = sum(self.cancerous_types)
+        #self.cancerous_cell_types = [self.pop[k] for k in list(self.pop.keys()) if k!=0]
+        self.cancerous_types_counts = [self.pop[k] for k in sorted(list(self.pop.keys())) if k!=0]
+        self.nbCanc = sum(self.cancerous_types_counts)
+        
         if self.nbCanc/self.N*1.0 >= self.w:
-            return True 
-        return False
+            biggest_clone = np.argmax(self.cancerous_types_counts)+1
+            return (True, biggest_clone)
+        return (False, 0)
     
+    def set_shannon(self):
+        s = 0
+        for k in list(self.pop.keys()):
+            pi = self.pop[k]/self.N*1.0
+            print(pi, math.log(pi))
+            s += pi*math.log(pi)
+        self.shannon.append(-s)
+        #self.shannon.append(sum([*math.log(self.pop[k]/self.N*1.0) for k in list(self.pop.keys())]))
+        
+        
     def run(self, T):
         for t in range(T):
-            self.step()
+            self.step(t)
+        plt.plot(self.shannon)
         #self.plot_history()
     
     def plot_history(self):
@@ -124,22 +148,24 @@ class simu():
             cell = 0
             tmp = self.history[t][cell]
             for n in range(self.N):
-                #print(n, tmp)
                 if n > tmp:
                     cell += 1
                     tmp += self.history[t][cell]
-                #print(cmap(cell)[0:3], cmap(cell)[0:3])
-                if cell == 1:
-                    color = "blue"
-                else:
-                    color = "red"
                 plt.plot(t, n*0.1, 'x', color = cmap(cell), markersize = 2)
     def plot_pop(self):
         cells = []
-        evol = [self.history[i][0] for i in range(len(self.history))]
-        plt.plot(evol)
+        #for c in list(self.history.keys():
+        evol0 = [self.history[i][0] for i in range(len(self.history))]
+        evol1 = [self.N-self.history[i][0] for i in range(len(self.history))]
+        plt.plot(evol0)
+        plt.plot(evol1, color = "red")
+        for t_t in self.treat_times:
+            plt.axvline(x=t_t, color = "black")
+        
+s = simu(500, 0.2, 10, f = 4, mu = 0.00005)
+s.run(3000)
+#s.plot_history()
+#s.plot_pop()
 
-            
-s = simu(50, 0.2, 10, f = 4, mu = 0.5)
-s.run(30)
-s.plot_history()
+#N = 500, f=1.5, mu = 0.005, c0 = 50, w = 0.2, 0.01, n = 10000
+
