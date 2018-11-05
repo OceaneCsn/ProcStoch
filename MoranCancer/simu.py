@@ -165,7 +165,7 @@ class simu():
 s = simu(500, 0.2, 10, f = 4, mu = 0.00005)
 s.run(3000)
 #s.plot_history()
-#s.plot_pop()
+s.plot_pop()
 
 #N = 500, f=1.5, mu = 0.005, c0 = 50, w = 0.2, 0.01, n = 10000
 
